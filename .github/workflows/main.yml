@@ -1,0 +1,60 @@
+name: Minecraft Server Setup
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  minecraft-server:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Minecraft
+      uses: intsuc/setup-minecraft@v3.3.2
+      with:
+        version: '1.20.4'  # نسخه ماینکرفت
+        type: 'paper'       # vanilla, paper, spigot, purpur, fabric, forge
+        # build: 'latest'   # (اختیاری) شماره بیلد برای paper/purpur
+    
+    - name: Accept EULA
+      run: echo "eula=true" > eula.txt
+    
+    - name: Configure server properties
+      run: |
+        cat > server.properties << EOF
+        server-port=25565
+        difficulty=normal
+        gamemode=survival
+        max-players=20
+        online-mode=false
+        EOF
+    
+    - name: Start server for testing
+      run: |
+        java -Xmx2G -jar server.jar nogui &
+        SERVER_PID=$!
+        sleep 30
+        # انجام تست‌ها
+        kill $SERVER_PID
+    
+    - name: Package server files
+      run: |
+        zip -r server-files.zip world/ plugins/ server.properties
+        
+    - name: Upload server artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: minecraft-server-${{ github.run_number }}
+        path: |
+          server-files.zip
+          logs/
